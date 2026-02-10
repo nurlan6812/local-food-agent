@@ -12,6 +12,7 @@ echo "2. 라이선스 동의 후 Access 요청"
 echo "3. huggingface-cli login 실행"
 echo ""
 
+# HF 토큰 확인
 if [ -z "$HF_TOKEN" ]; then
     echo "HF_TOKEN 환경변수를 설정하거나 huggingface-cli login을 실행하세요."
 fi
@@ -21,6 +22,7 @@ echo "=== 모델 다운로드 테스트 ==="
 python -c "
 from huggingface_hub import snapshot_download
 try:
+    # 모델 정보만 확인 (전체 다운로드 X)
     from huggingface_hub import model_info
     info = model_info('LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct')
     print(f'모델 접근 가능: {info.id}')

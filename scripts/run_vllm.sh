@@ -12,6 +12,7 @@ echo "포트: $PORT"
 echo "최대 컨텍스트: $MAX_MODEL_LEN"
 echo ""
 
+# vLLM 서버 실행
 vllm serve $MODEL \
     --port $PORT \
     --host 0.0.0.0 \
