@@ -1,0 +1,37 @@
+{
+  "name": "korean-food-ai-chat",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-toast": "^1.2.15",
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/node": "^25.1.0",
+    "@types/react": "^19.2.10",
+    "autoprefixer": "^10.4.23",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.563.0",
+    "next": "^16.1.6",
+    "next-pwa": "^5.6.0",
+    "next-themes": "^0.4.6",
+    "postcss": "^8.5.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.4.0",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}

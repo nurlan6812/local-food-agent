@@ -1,0 +1,28 @@
+{
+  "name": "Korean Food Agent",
+  "short_name": "Food AI",
+  "description": "한국 음식 AI 에이전트 - 음식 인식, 식당 검색, 레시피, 영양정보",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["food", "lifestyle", "productivity"],
+  "lang": "ko-KR",
+  "dir": "ltr",
+  "screenshots": []
+}
