@@ -33,9 +33,11 @@ def _crawl_recipe_fast(url: str) -> str:
 
         soup = BeautifulSoup(resp.text, 'html.parser')
 
+        # 만개의레시피
         if '10000recipe.com' in url:
             output = []
 
+            # 완성 사진 추출
             main_img = soup.select_one('#main_thumbs img, .view2_pic_best img, .centeredcrop img')
             if main_img:
                 img_url = main_img.get('src', '') or main_img.get('data-src', '')
@@ -81,6 +83,7 @@ def _crawl_recipe_fast(url: str) -> str:
 
             return "\n".join(output)
 
+        # 네이버 블로그 / 티스토리 / 기타
         else:
             if 'blog.naver.com' in url and 'm.blog.naver.com' not in url:
                 url = url.replace('blog.naver.com', 'm.blog.naver.com')

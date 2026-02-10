@@ -35,7 +35,7 @@ def extract_blog_content(url: str) -> Dict[str, Any]:
         text = re.sub(r'<[^>]+>', ' ', text)
         text = ' '.join(text.split())
 
-        food_keywords = ['주문', '시쯄', '먹었', '메뉴', '맛있', '바삭', '켄깃', '토핑', '소스', '가격', '원']
+        food_keywords = ['주문', '시켰', '먹었', '메뉴', '맛있', '바삭', '쫄깃', '토핑', '소스', '가격', '원']
         sentences = re.split(r'[.!?。]', text)
 
         relevant_sentences = []
@@ -62,7 +62,13 @@ def _get_mime_type(path_or_url: str) -> str:
 
 
 def _analyze_with_gemini(image_source: str, image_url: str, search_results: str) -> str:
-    """Gemini API로 이미지 + Google Lens 검색 결과를 종합 분석"""
+    """Gemini API로 이미지 + Google Lens 검색 결과를 종합 분석
+
+    Args:
+        image_source: 원본 이미지 소스 (로컬 경로 또는 URL)
+        image_url: 업로드된 공개 이미지 URL
+        search_results: Google Lens 검색 결과 텍스트
+    """
     api_key = settings.google_api_key
     if not api_key:
         return f"[Gemini API 키 미설정 - 원본 검색 결과]\n{search_results}"
@@ -72,6 +78,7 @@ def _analyze_with_gemini(image_source: str, image_url: str, search_results: str)
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-3-flash-preview')
 
+        # 이미지 준비 (로컬 파일이면 직접 읽기, URL이면 다운로드)
         if os.path.exists(image_source):
             with open(image_source, 'rb') as f:
                 image_data = f.read()
@@ -133,17 +140,20 @@ def search_food_by_image(image_source: str) -> str:
 
     searcher = get_searcher()
 
+    # 1. 이미지 업로드
     writer({"tool": "search_food_by_image", "status": "이미지 업로드 중..."})
     image_url = searcher.get_image_url(image_source)
     if not image_url:
         return f"이미지를 업로드할 수 없습니다: {image_source}"
 
+    # 2. Google Lens 검색
     writer({"tool": "search_food_by_image", "status": "Google Lens로 검색 중..."})
     result = searcher.search_with_combined(image_url)
 
     if "error" in result:
         return f"검색 실패: {result['error']}"
 
+    # 3. 검색 결과를 텍스트로 정리 (Gemini에 전달용)
     raw_parts = []
     blog_links = []
     thumbnails = []
@@ -185,9 +195,11 @@ def search_food_by_image(image_source: str) -> str:
 
     search_text = "\n".join(raw_parts)
 
+    # 4. Gemini로 이미지 + 검색 결과 종합 분석
     writer({"tool": "search_food_by_image", "status": "Gemini로 종합 분석 중..."})
     analysis = _analyze_with_gemini(image_source, image_url, search_text)
 
+    # 5. 썸네일 추가 (프론트엔드 이미지 표시용)
     output = analysis
     if thumbnails:
         output += "\n\n[검색 결과 이미지]"

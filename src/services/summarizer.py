@@ -76,7 +76,7 @@ class LocalSummarizer:
         api_key: str = "local-vllm-key",
         model: str = "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct-AWQ",
         enabled: bool = True,
-        min_length_to_summarize: int = 1000,
+        min_length_to_summarize: int = 1000,  # 이 길이 이상일 때만 요약
     ):
         self.base_url = base_url
         self.api_key = api_key
@@ -102,6 +102,7 @@ class LocalSummarizer:
                 base_url=self.base_url,
                 api_key=self.api_key,
             )
+            # 연결 테스트
             self.client.models.list()
             print(f"[Summarizer] vLLM 서버 연결 성공: {self.base_url}")
             return True
@@ -124,8 +125,20 @@ class LocalSummarizer:
         tool_result: str,
         max_tokens: int = 500,
     ) -> SummaryResult:
+        """
+        도구 결과를 요약합니다.
+
+        Args:
+            tool_name: 도구 이름
+            tool_result: 도구 실행 결과
+            max_tokens: 최대 출력 토큰
+
+        Returns:
+            SummaryResult 객체
+        """
         original_length = len(tool_result)
 
+        # 요약 불필요하거나 서비스 사용 불가
         if not self.should_summarize(tool_result) or not self.is_available():
             return SummaryResult(
                 original_length=original_length,
@@ -135,6 +148,7 @@ class LocalSummarizer:
                 compression_ratio=1.0,
             )
 
+        # 도구별 프롬프트 선택
         system_prompt = TOOL_PROMPTS.get(tool_name, DEFAULT_PROMPT)
 
         start_time = time.time()
@@ -147,7 +161,7 @@ class LocalSummarizer:
                     {"role": "user", "content": tool_result},
                 ],
                 max_tokens=max_tokens,
-                temperature=0.3,
+                temperature=0.3,  # 요약은 낮은 temperature
             )
 
             summary = response.choices[0].message.content

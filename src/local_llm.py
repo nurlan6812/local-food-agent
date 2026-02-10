@@ -18,8 +18,9 @@ class LocalGLM4V(BaseChatModel):
     model_path: str = Field(default="/home/ondamlab/.cache/huggingface/hub/models--zai-org--GLM-4.6V-Flash/snapshots/main")
     temperature: float = Field(default=0.7)
     max_new_tokens: int = Field(default=2048)
-    tools: List[Dict] = Field(default_factory=list)
+    tools: List[Dict] = Field(default_factory=list)  # 바인딩된 도구들
 
+    # 내부 상태 (private)
     _model: Any = None
     _processor: Any = None
     _device: str = "cuda"
@@ -31,13 +32,20 @@ class LocalGLM4V(BaseChatModel):
         super().__init__(**kwargs)
         self._load_model()
 
-    def bind_tools(self, tools: Sequence[Union[Dict[str, Any], BaseTool]], **kwargs) -> "LocalGLM4V":
+    def bind_tools(
+        self,
+        tools: Sequence[Union[Dict[str, Any], BaseTool]],
+        **kwargs
+    ) -> "LocalGLM4V":
+        """도구를 모델에 바인딩합니다."""
         formatted_tools = []
         for tool in tools:
             if isinstance(tool, BaseTool):
                 formatted_tools.append(convert_to_openai_tool(tool))
             else:
                 formatted_tools.append(tool)
+
+        # 새 인스턴스 생성 (tools만 다르게)
         return LocalGLM4V(
             model_path=self.model_path,
             temperature=self.temperature,
@@ -46,15 +54,25 @@ class LocalGLM4V(BaseChatModel):
         )
 
     def _load_model(self):
+        """모델과 프로세서 로드"""
         if self._model is not None:
             return
+
         from transformers import AutoProcessor, Glm4vForConditionalGeneration
-        print(f"\ud83d\udd04 Loading GLM-4.6V-Flash from {self.model_path}...")
-        self._processor = AutoProcessor.from_pretrained(self.model_path, use_fast=False)
-        self._model = Glm4vForConditionalGeneration.from_pretrained(
-            self.model_path, torch_dtype=torch.bfloat16, device_map="auto"
+
+        print(f"🔄 Loading GLM-4.6V-Flash from {self.model_path}...")
+
+        self._processor = AutoProcessor.from_pretrained(
+            self.model_path,
+            use_fast=False
         )
-        print(f"\u2705 Model loaded! GPU Memory: {torch.cuda.memory_allocated()/1024**3:.2f} GB")
+        self._model = Glm4vForConditionalGeneration.from_pretrained(
+            self.model_path,
+            torch_dtype=torch.bfloat16,
+            device_map="auto"
+        )
+
+        print(f"✅ Model loaded! GPU Memory: {torch.cuda.memory_allocated()/1024**3:.2f} GB")
 
     @property
     def _llm_type(self) -> str:
@@ -62,16 +80,24 @@ class LocalGLM4V(BaseChatModel):
 
     @property
     def _identifying_params(self) -> dict:
-        return {"model_path": self.model_path, "temperature": self.temperature, "max_new_tokens": self.max_new_tokens}
+        return {
+            "model_path": self.model_path,
+            "temperature": self.temperature,
+            "max_new_tokens": self.max_new_tokens,
+        }
 
     def _convert_messages_to_glm_format(self, messages: List[BaseMessage]) -> List[dict]:
+        """LangChain 메시지를 GLM 형식으로 변환"""
         glm_messages = []
         system_content = ""
+
         for msg in messages:
             if isinstance(msg, SystemMessage):
                 system_content = msg.content
             elif isinstance(msg, HumanMessage):
                 content = msg.content
+
+                # 멀티모달 콘텐츠 처리
                 if isinstance(content, list):
                     glm_content = []
                     for item in content:
@@ -83,12 +109,16 @@ class LocalGLM4V(BaseChatModel):
                                     system_content = ""
                                 glm_content.append({"type": "text", "text": text})
                             elif item.get("type") == "image_url":
-                                import base64
-                                from PIL import Image
-                                from io import BytesIO
+                                # base64 이미지 처리
                                 image_url = item.get("image_url", {})
                                 url = image_url.get("url", "") if isinstance(image_url, dict) else image_url
                                 if url.startswith("data:"):
+                                    # base64 디코딩
+                                    import base64
+                                    from PIL import Image
+                                    from io import BytesIO
+
+                                    # data:image/jpeg;base64,xxx 형식 파싱
                                     header, data = url.split(",", 1)
                                     image_data = base64.b64decode(data)
                                     image = Image.open(BytesIO(image_data))
@@ -99,28 +129,41 @@ class LocalGLM4V(BaseChatModel):
                                 text = f"{system_content}\n\n{text}"
                                 system_content = ""
                             glm_content.append({"type": "text", "text": text})
+
                     glm_messages.append({"role": "user", "content": glm_content})
                 else:
+                    # 텍스트만 있는 경우
                     text = content
                     if system_content:
                         text = f"{system_content}\n\n{text}"
                         system_content = ""
-                    glm_messages.append({"role": "user", "content": [{"type": "text", "text": text}]})
+                    glm_messages.append({
+                        "role": "user",
+                        "content": [{"type": "text", "text": text}]
+                    })
             elif isinstance(msg, AIMessage):
-                glm_messages.append({"role": "assistant", "content": [{"type": "text", "text": msg.content}]})
+                glm_messages.append({
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": msg.content}]
+                })
+
         return glm_messages
 
     def _build_tools_prompt(self) -> str:
+        """도구 정보를 프롬프트로 변환"""
         if not self.tools:
             return ""
+
         tools_desc = "\n\n## 사용 가능한 도구들:\n"
         for tool in self.tools:
             func = tool.get("function", {})
             name = func.get("name", "unknown")
             desc = func.get("description", "")
             params = func.get("parameters", {})
+
             tools_desc += f"\n### {name}\n"
             tools_desc += f"설명: {desc}\n"
+
             if params.get("properties"):
                 tools_desc += "파라미터:\n"
                 for param_name, param_info in params["properties"].items():
@@ -128,14 +171,27 @@ class LocalGLM4V(BaseChatModel):
                     param_type = param_info.get("type", "string")
                     required = param_name in params.get("required", [])
                     tools_desc += f"  - {param_name} ({param_type}{'*' if required else ''}): {param_desc}\n"
-        tools_desc += """\n## 도구 호출 형식:\n도구를 호출하려면 다음 JSON 형식을 사용하세요:\n```tool_call\n{"name": "도구이름", "arguments": {"param1": "value1"}}\n```\n\n도구 호출이 필요 없으면 일반 텍스트로 응답하세요.\n"""
+
+        tools_desc += """
+## 도구 호출 형식:
+도구를 호출하려면 다음 JSON 형식을 사용하세요:
+```tool_call
+{"name": "도구이름", "arguments": {"param1": "value1"}}
+```
+
+도구 호출이 필요 없으면 일반 텍스트로 응답하세요.
+"""
         return tools_desc
 
     def _parse_tool_calls(self, text: str) -> tuple[str, List[Dict]]:
+        """응답에서 도구 호출을 파싱"""
         import re
+
         tool_calls = []
+        # ```tool_call ... ``` 패턴 찾기
         pattern = r'```tool_call\s*\n?(.*?)\n?```'
         matches = re.findall(pattern, text, re.DOTALL)
+
         for match in matches:
             try:
                 call = json.loads(match.strip())
@@ -150,11 +206,23 @@ class LocalGLM4V(BaseChatModel):
                     })
             except json.JSONDecodeError:
                 continue
+
+        # 도구 호출 부분 제거한 텍스트
         clean_text = re.sub(pattern, '', text, flags=re.DOTALL).strip()
+
         return clean_text, tool_calls
 
-    def _generate(self, messages: List[BaseMessage], stop: Optional[List[str]] = None, run_manager: Optional[CallbackManagerForLLMRun] = None, **kwargs) -> ChatResult:
+    def _generate(
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs
+    ) -> ChatResult:
+        """메시지 생성 (Tool Calling 지원)"""
         glm_messages = self._convert_messages_to_glm_format(messages)
+
+        # 도구 정보를 시스템 프롬프트에 추가
         if self.tools and glm_messages:
             tools_prompt = self._build_tools_prompt()
             first_msg = glm_messages[0]
@@ -163,40 +231,88 @@ class LocalGLM4V(BaseChatModel):
                     if item.get("type") == "text":
                         item["text"] = tools_prompt + "\n\n" + item["text"]
                         break
+
         inputs = self._processor.apply_chat_template(
-            glm_messages, tokenize=True, add_generation_prompt=True, return_dict=True, return_tensors="pt"
+            glm_messages,
+            tokenize=True,
+            add_generation_prompt=True,
+            return_dict=True,
+            return_tensors="pt"
         ).to(self._model.device)
+
+        # token_type_ids 제거 (GLM에서 불필요)
         inputs.pop("token_type_ids", None)
+
+        # 생성
         with torch.no_grad():
             generated_ids = self._model.generate(
-                **inputs, max_new_tokens=self.max_new_tokens,
+                **inputs,
+                max_new_tokens=self.max_new_tokens,
                 temperature=self.temperature if self.temperature > 0 else None,
                 do_sample=self.temperature > 0,
             )
-        output_text = self._processor.decode(generated_ids[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+
+        # 응답 디코딩
+        output_text = self._processor.decode(
+            generated_ids[0][inputs["input_ids"].shape[1]:],
+            skip_special_tokens=True
+        )
+
+        # <think> 태그 제거
         if "<think>" in output_text and "</think>" in output_text:
             import re
             output_text = re.sub(r'<think>.*?</think>\s*', '', output_text, flags=re.DOTALL)
+
+        # 도구 호출 파싱
         clean_text, tool_calls = self._parse_tool_calls(output_text)
+
+        # AIMessage 생성
         ai_message = AIMessage(
             content=clean_text,
-            tool_calls=[{"id": tc["id"], "name": tc["function"]["name"], "args": json.loads(tc["function"]["arguments"])} for tc in tool_calls] if tool_calls else []
+            tool_calls=[
+                {
+                    "id": tc["id"],
+                    "name": tc["function"]["name"],
+                    "args": json.loads(tc["function"]["arguments"])
+                }
+                for tc in tool_calls
+            ] if tool_calls else []
         )
-        return ChatResult(generations=[ChatGeneration(message=ai_message)])
 
-    def _stream(self, messages: List[BaseMessage], stop: Optional[List[str]] = None, run_manager: Optional[CallbackManagerForLLMRun] = None, **kwargs) -> Iterator[ChatGeneration]:
+        return ChatResult(
+            generations=[ChatGeneration(message=ai_message)]
+        )
+
+    def _stream(
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs
+    ) -> Iterator[ChatGeneration]:
+        """스트리밍 생성 (현재는 전체 생성 후 한번에 반환)"""
+        # TODO: 실제 토큰별 스트리밍 구현
         result = self._generate(messages, stop, run_manager, **kwargs)
         yield result.generations[0]
 
 
+# 싱글톤 인스턴스 (모델 재로딩 방지)
 _glm_instance: Optional[LocalGLM4V] = None
 
 
-def get_local_glm(model_path: Optional[str] = None, temperature: float = 0.7, max_new_tokens: int = 2048) -> LocalGLM4V:
+def get_local_glm(
+    model_path: Optional[str] = None,
+    temperature: float = 0.7,
+    max_new_tokens: int = 2048
+) -> LocalGLM4V:
+    """GLM 모델 싱글톤 인스턴스 반환"""
     global _glm_instance
+
     if _glm_instance is None:
         _glm_instance = LocalGLM4V(
             model_path=model_path or "/home/ondamlab/.cache/huggingface/hub/models--zai-org--GLM-4.6V-Flash/snapshots/main",
-            temperature=temperature, max_new_tokens=max_new_tokens
+            temperature=temperature,
+            max_new_tokens=max_new_tokens
         )
+
     return _glm_instance

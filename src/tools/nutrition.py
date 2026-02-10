@@ -58,11 +58,12 @@ def get_nutrition_info(query: str) -> str:
     직접 영양정보를 답변하지 말고 이 도구로 검색하세요.
 
     Args:
-        query: 검색 쿼리 (예: "김치찌개 칼로리", "스타볅스 아메리카노 열량")
+        query: 검색 쿼리 (예: "김치찌개 칼로리", "스타벅스 아메리카노 열량")
 
     Returns:
         영양정보 검색 결과
     """
+    # 실시간 스트리밍
     writer = get_stream_writer()
     writer({"tool": "get_nutrition_info", "status": "영양 정보 검색 중..."})
 

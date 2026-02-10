@@ -5,6 +5,7 @@ from typing import Optional
 from langchain_core.tools import tool
 from langgraph.config import get_stream_writer
 
+# 환경 변수 로드
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -25,9 +26,9 @@ def update_food_image(
 
     Args:
         image_id: save_food_image에서 반환된 이미지 ID
-        food_name: 확인된 음식 이름 -> food_verified=true
+        food_name: 확인된 음식 이름 → food_verified=true
         source_type: "restaurant", "home_cooked", "delivery" 중 하나
-        restaurant_name: 확인된 식당 이름 -> restaurant_verified=true
+        restaurant_name: 확인된 식당 이름 → restaurant_verified=true
         location: 위치/지역
 
     Returns:
@@ -36,11 +37,12 @@ def update_food_image(
     from ..db.client import get_supabase_client
 
     try:
+        # get_stream_writer는 LangGraph 컨텍스트에서만 동작
         try:
             writer = get_stream_writer()
             writer({"tool": "update_food_image", "status": "정보 업데이트 중..."})
         except:
-            pass
+            pass  # LangGraph 밖에서는 무시
 
         supabase = get_supabase_client()
 
