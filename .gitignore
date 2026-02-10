@@ -1,0 +1,117 @@
+# ===================================
+# Korean Food Agent .gitignore
+# ===================================
+
+# ===========================
+# Environment Variables
+# ===========================
+.env
+.env.local
+.env.*.local
+
+# ===========================
+# Python
+# ===========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# ===========================
+# Node.js / Frontend
+# ===========================
+node_modules/
+.next/
+.nuxt/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ===========================
+# Test & Debug
+# ===========================
+test_*.py
+*.test.js
+coverage/
+.pytest_cache/
+.coverage
+
+# ===========================
+# IDE & Editors
+# ===========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ===========================
+# OS
+# ===========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ===========================
+# Images (테스트용 제외)
+# ===========================
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+!docs/**/*.png
+!docs/**/*.jpg
+
+# ===========================
+# Database & Logs
+# ===========================
+*.db
+*.sqlite
+*.log
+logs/
+
+# ===========================
+# Playwright
+# ===========================
+playwright/.auth/
+test-results/
+playwright-report/
+
+# ===========================
+# PWA (Progressive Web App)
+# ===========================
+**/public/sw.js
+**/public/workbox-*.js
+**/public/worker-*.js
+**/public/sw.js.map
+**/public/workbox-*.js.map
+**/public/worker-*.js.map
+
+# ===========================
+# 별도 프로젝트
+# ===========================
+custom-gpt/
+.vercel
